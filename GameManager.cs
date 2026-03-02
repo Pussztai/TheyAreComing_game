@@ -17,6 +17,7 @@ namespace TheyAreComing {
         private UpgradeSystem upgradeSystem = new();
         private MetaShop      metaShop      = new();
         private WeaponShop    weaponShop    = new();
+        private HowToPlay     howToPlay     = new();
 
         // ── Barrikád lista ────────────────────────────────────────────────
         private List<Barricade> barricades = new();
@@ -68,6 +69,10 @@ namespace TheyAreComing {
 
                 case GameState.GameMenu:
                     if (gameMenu.Update()) StartNewRun();
+                    if (gameMenu.HowToPlayClicked) {
+                        howToPlay.Open();
+                        state = GameState.HowToPlay;
+                    }
                     break;
 
                 case GameState.Playing:
@@ -102,6 +107,11 @@ namespace TheyAreComing {
                     }
                     break;
 
+                case GameState.HowToPlay:
+                    howToPlay.Update();
+                    if (howToPlay.ExitClicked) state = GameState.GameMenu;
+                    break;
+
                 case GameState.GameOver:
                     metaShop.AddSessionGold(sessionGold);
                     bool playAgain = metaShop.Update();
@@ -118,6 +128,7 @@ namespace TheyAreComing {
             switch (state) {
                 case GameState.MainMenu:        mainMenu.Draw();                                                    break;
                 case GameState.GameMenu:        gameMenu.Draw();                                                    break;
+                case GameState.HowToPlay:       howToPlay.Draw();                                                   break;
                 case GameState.Playing:         DrawGame();                                                         break;
                 case GameState.WaveReward:      DrawGame(); DrawRewardOverlay();                                    break;
                 case GameState.WeaponShopState: DrawGame(); weaponShop.Draw(player!);                               break;
@@ -126,19 +137,24 @@ namespace TheyAreComing {
             }
         }
 
+        private void PlaceBarricade() {
+            if (player == null) return;
+            if (upgradeSystem.BarricadeCount <= 0) return;
+            if (!upgradeSystem.UseBarricade()) return;
+            barricades.Add(new Barricade(player.X + 60, player.Y));
+        }
+
         private void UpdatePlaying(float dt) {
             if (player == null || waves == null) return;
 
+            // ── Barrikád lehelyezés [B] gombbal vagy hotbar klikkel ───────
+            bool hotbarClicked = player.DrawBottomHotbarInput(upgradeSystem.BarricadeCount);
+            if ((Raylib.IsKeyPressed(KeyboardKey.B) || hotbarClicked) && upgradeSystem.BarricadeCount > 0) {
+                PlaceBarricade();
+            }
+
             player.Update(dt);
             waves.Update(dt);
-
-            // ── Barrikád lehelyezés [B] gombbal ──────────────────────────
-            if (Raylib.IsKeyPressed(KeyboardKey.B) && upgradeSystem.BarricadeCount > 0) {
-                if (upgradeSystem.UseBarricade()) {
-                    // A player elé rakja (jobbra 60px)
-                    barricades.Add(new Barricade(player.X + 60, player.Y));
-                }
-            }
 
             // ── Barrikád update (hit flash animáció) ─────────────────────
             foreach (var barr in barricades) barr.Update(dt);
@@ -147,16 +163,15 @@ namespace TheyAreComing {
             foreach (var zombie in waves.Zombies)
                 zombie.SetBarricades(barricades);
 
-            // ── Zombie vs Barrikád – ütési cooldown zombinként ────────────
+            // ── Zombie vs Barrikád – ütési damage ────────────────────────
+            // A blokkolás és pozíció push a Zombie.Update-ben történik.
+            // Itt csak a sebzést adjuk a barrikádnak ha a zombi ott áll.
             foreach (var zombie in waves.Zombies) {
                 if (!zombie.IsAlive) continue;
-                foreach (var barr in barricades) {
-                    if (!barr.IsAlive) continue;
-                    if (barr.CheckCollision(zombie.X, zombie.Y, zombie.Size)) {
-                        // Zombi megáll a barrikádnál és üti – cooldown alapján
-                        if (zombie.CanHitBarricade()) {
-                            barr.TakeDamage(zombie.BarricadeDamage());
-                        }
+                var blocker = zombie.CurrentBlocker;
+                if (blocker != null && blocker.IsAlive) {
+                    if (zombie.CanHitBarricade()) {
+                        blocker.TakeDamage(zombie.BarricadeDamage());
                     }
                 }
             }
@@ -230,11 +245,9 @@ namespace TheyAreComing {
                 lastRewardGold = bonus;
 
                 if (waves.CurrentWave % 3 == 0) {
-                    // ── Minden 3. körben: upgrade + weaponshop ──────────
                     upgradeSystem.GenerateOptions();
                     state = GameState.UpgradeSelect;
                 } else {
-                    // ── 1-2. kör: csak wave reward képernyő ────────────
                     rewardTimer = RewardDuration;
                     state = GameState.WaveReward;
                 }
@@ -277,10 +290,9 @@ namespace TheyAreComing {
             player?.DrawTopBar(waves?.CurrentWave ?? 0,
                                waves?.Zombies.Count(z => z.IsAlive) ?? 0);
 
-            Raylib.DrawRectangle(0, 587, 800, 13, new Color(0, 0, 0, 170));
-            Raylib.DrawText("WASD-Move | LMB-Shoot | R-Reload | B-Barricade",
-                400 - Raylib.MeasureText("WASD-Move | LMB-Shoot | R-Reload | B-Barricade", 11) / 2,
-                589, 11, new Color(160, 160, 160, 255));
+            // ── Alsó hotbar – barrikád slot ───────────────────────────────
+            if (player != null)
+                player.DrawBottomHotbar(upgradeSystem.BarricadeCount);
         }
 
         private void DrawRewardOverlay() {

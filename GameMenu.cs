@@ -12,6 +12,8 @@ namespace TheyAreComing {
         private Rectangle shopButton;
         private Rectangle howToPlayButton;
 
+        public bool HowToPlayClicked { get; private set; } = false;
+
         public GameMenu() {
             newCampaignButton = new Rectangle(ScreenWidth / 2 - 210, ScreenHeight / 2 - 50, 200, 50);
             playgroundButton  = new Rectangle(ScreenWidth / 2 + 10,  ScreenHeight / 2 - 50, 200, 50);
@@ -21,6 +23,7 @@ namespace TheyAreComing {
         }
 
         public bool Update() {
+            HowToPlayClicked = false;
             Vector2 mousePos = Raylib.GetMousePosition();
 
             // GitHub gomb
@@ -32,7 +35,13 @@ namespace TheyAreComing {
             // Discord gomb
             if (Raylib.CheckCollisionPointRec(mousePos, howToPlayButton)
                 && Raylib.IsMouseButtonPressed(MouseButton.Left)) {
-                OpenUrl("https://discord.com/users/675352730595754015");
+                OpenUrl("https://discord.gg/");
+            }
+
+            // How To Play gomb – a rankingButton van "How To Play" felirattal kirajzolva!
+            if (Raylib.CheckCollisionPointRec(mousePos, rankingButton)
+                && Raylib.IsMouseButtonPressed(MouseButton.Left)) {
+                HowToPlayClicked = true;
             }
 
             return Raylib.CheckCollisionPointRec(mousePos, newCampaignButton)

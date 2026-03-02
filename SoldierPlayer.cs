@@ -20,7 +20,7 @@ namespace TheyAreComing {
         public int Health    { get; set; } = 100;
         public int MaxHealth { get; set; } = 100;
 
-        public float Speed { get; set; } = 220f;
+        public float Speed { get; set; } = 150f;
 
         public List<Bullet> Bullets { get; private set; } = new();
         private float shootCooldown = 0f;
@@ -234,14 +234,14 @@ namespace TheyAreComing {
             DrawSection(407, 4, 85, 30, "MONEY");
             Raylib.DrawText($"${Money}", 412, 19, 15, Color.Gold);
 
-            DrawSection(500, 4, 72, 30, "FOES");
+            DrawSection(500, 4, 72, 30, "ENEMY");
             Raylib.DrawText($"{zombieCount}", 505, 19, 18, new Color(255, 80, 80, 255));
 
             DrawSection(580, 4, 64, 30, "GUN");
             string wname = WeaponCatalog.Get(CurrentWeapon).Name;
             Raylib.DrawText(wname.Length > 6 ? wname[..6] : wname, 585, 20, 10, Color.SkyBlue);
 
-            Raylib.DrawText($"{Raylib.GetFPS()} FPS", 10, 585, 12, Color.DarkGreen);
+            //Raylib.DrawText($"{Raylib.GetFPS()} FPS", 10, 585, 12, Color.DarkGreen);
         }
 
         // Hotbar slot téglalap – használja mindkét metódus

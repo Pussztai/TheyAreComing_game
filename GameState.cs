@@ -7,5 +7,6 @@ namespace TheyAreComing {
         WeaponShopState,
         UpgradeSelect,
         GameOver,
+        HowToPlay,
     }
 }

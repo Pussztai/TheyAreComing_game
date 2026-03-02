@@ -39,10 +39,10 @@ namespace TheyAreComing {
 
         // ── Barrikád ütési cooldown ────────────────────────────────────────
         private float barrHitCooldown = 0f;
-        private float barrHitInterval = 0.8f;  // másodpercenként üt
+        private float barrHitInterval = 0.8f;
         private int   barrDmg = 20;
 
-        // ── Mozgási zóna (barna terület) ──────────────────────────────────
+        // ── Mozgási zóna ──────────────────────────────────────────────────
         private float zoneMinX = 0f;
         private float zoneMaxX = 800f;
         private float zoneMinY = SoldierPlayer.AreaMinY;
@@ -51,7 +51,9 @@ namespace TheyAreComing {
         // ── Barrikád blokkolás ─────────────────────────────────────────────
         private List<Barricade>? barricades = null;
         public void SetBarricades(List<Barricade> list) => barricades = list;
-        private bool isBlockedByBarricade = false;
+
+        // Az a barrikád amit jelenleg blokkol
+        private Barricade? blockedBy = null;
 
         public static void LoadSprite(string path) {
             if (spriteSheet == null || spriteSheet.Value.Id == 0)
@@ -99,7 +101,6 @@ namespace TheyAreComing {
             originalSpeed = speed;
         }
 
-        /// <summary>Beállítja a barna területen belüli mozgási zónát.</summary>
         public void SetMovementZone(float minX, float maxX, float minY, float maxY) {
             zoneMinX = minX;
             zoneMaxX = maxX;
@@ -112,6 +113,7 @@ namespace TheyAreComing {
         public void Update(float deltaTime) {
             if (!IsAlive) return;
 
+            // Crawl state
             float healthPercent = Health / MaxHealth;
             if (healthPercent <= 0.5f && State == ZombieState.Walking) {
                 State  = ZombieState.Crawling;
@@ -120,27 +122,44 @@ namespace TheyAreComing {
                 Damage = (int)(Damage * 0.6f);
             }
 
-            // ── Barrikád közelség ellenőrzés ─────────────────────────
-            isBlockedByBarricade = false;
+            // ── Cooldownok ─────────────────────────────────────────────────
+            headshotFlashTimer -= deltaTime;
+            if (barrHitCooldown > 0) barrHitCooldown -= deltaTime;
+
+            // ── Barrikád ütközés és blokkolás ─────────────────────────────
+            blockedBy = null;
             if (barricades != null) {
                 foreach (var barr in barricades) {
                     if (!barr.IsAlive) continue;
-                    // Ütési zóna: kicsit nagyobb mint az ütközési zóna
-                    float attackRange = Size + 6f;
-                    float dx2 = MathF.Abs(X - barr.X);
-                    float dy2 = MathF.Abs(Y - barr.Y);
-                    if (dx2 < (Barricade.HalfW + attackRange) && dy2 < (Barricade.HalfH + attackRange)) {
-                        isBlockedByBarricade = true;
-                        // Pontosan a barrikád szélére tapasztjuk (ne menjen bele)
-                        float pushX = barr.X + Barricade.HalfW + Size;
-                        if (X < barr.X) pushX = barr.X - Barricade.HalfW - Size;
-                        X = pushX;
+
+                    // Ütközési zóna: érintkezik-e a zombi a barrikáddal?
+                    float hitRange = Size + 4f;
+                    float dx = MathF.Abs(X - barr.X);
+                    float dy = MathF.Abs(Y - barr.Y);
+
+                    if (dx < (Barricade.HalfW + hitRange) && dy < (Barricade.HalfH + hitRange)) {
+                        blockedBy = barr;
+
+                        // A zombit a barrikád elé toljuk vissza (ne menjen be)
+                        // A zombi mindig balról jön (jobbról balra mozog)
+                        // tehát a barr.X - HalfW - Size a megállási pozíció X-en
+                        float stopX = barr.X - Barricade.HalfW - Size - 1f;
+                        if (X > stopX) X = stopX;
+
+                        // Y-t szorítjuk a barrikád Y-tartományára is,
+                        // hogy ne csússzon le/fel mellette (opcionális szűkítés)
+                        // Hagyjuk: a zóna clamp ezt kezeli
+
+                        // Üt a barrikádra cooldown-al – ezt a GameManager kezeli
+                        // (CanHitBarricade + BarricadeDamage), de az animáció
+                        // és állás itt van
                         break;
                     }
                 }
             }
 
-            if (!isBlockedByBarricade && target != null) {
+            // ── Mozgás – csak ha nincs barrikád előtte ─────────────────────
+            if (blockedBy == null && target != null) {
                 float dirX = target.X - X, dirY = target.Y - Y;
                 float distance = MathF.Sqrt(dirX * dirX + dirY * dirY);
                 if (distance > 5f) {
@@ -149,19 +168,18 @@ namespace TheyAreComing {
                 }
             }
 
-            // ── Clamp a barna területre (miután belépett a képernyőre) ────
-            // Csak akkor clampelünk X-re ha a zombi már belépett a látható területre
-            // (X <= zoneMaxX), amíg kívülről sétál be, szabadon mozoghat
+            // ── Zóna clamp ────────────────────────────────────────────────
             if (X <= zoneMaxX) {
                 X = Math.Clamp(X, zoneMinX, zoneMaxX);
             }
             Y = Math.Clamp(Y, zoneMinY, zoneMaxY);
 
+            // ── Animáció ──────────────────────────────────────────────────
             frameTimer += deltaTime;
-            if (frameTimer >= frameSpeed) { currentFrame = (currentFrame + 1) % totalFrames; frameTimer = 0f; }
-
-            headshotFlashTimer -= deltaTime;
-            if (barrHitCooldown > 0) barrHitCooldown -= deltaTime;
+            if (frameTimer >= frameSpeed) {
+                currentFrame = (currentFrame + 1) % totalFrames;
+                frameTimer = 0f;
+            }
         }
 
         /// <summary>Tud-e most ütni a barrikádra (cooldown lejárt).</summary>
@@ -173,6 +191,12 @@ namespace TheyAreComing {
 
         /// <summary>Mennyi sebzést okoz a barrikádnak.</summary>
         public int BarricadeDamage() => barrDmg;
+
+        /// <summary>Jelenleg barrikád blokkolja-e a zombit.</summary>
+        public bool IsBlockedByBarricade => blockedBy != null;
+
+        /// <summary>Melyik barrikádnál áll (null ha nem blokkolva).</summary>
+        public Barricade? CurrentBlocker => blockedBy;
 
         public void TakeDamage(float damage) {
             Health -= damage;

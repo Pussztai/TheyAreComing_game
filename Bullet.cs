@@ -8,7 +8,7 @@ namespace TheyAreComing {
         public float VelocityY { get; set; }
         public bool IsActive { get; set; } = true;
 
-        private const float Speed = 600f;
+        private const float Speed = 800f;
         private const float Radius = 3f;
 
         public Bullet(float startX, float startY, float directionX, float directionY) {
