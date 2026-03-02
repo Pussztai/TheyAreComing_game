@@ -3,10 +3,6 @@ using System.Numerics;
 
 namespace TheyAreComing {
 
-    /// <summary>
-    /// Hullámok között megjelenő fegyverbolt.
-    /// A játékos pénzéből vásárolhat jobb fegyvert.
-    /// </summary>
     public class WeaponShop {
 
         private Rectangle[] btnWeapon = new Rectangle[5];
@@ -15,18 +11,17 @@ namespace TheyAreComing {
 
         public bool IsClosed { get; private set; } = false;
 
-        // ── Pixel-art stílusú fegyver ikonok szövegből ──────────────────────
-        private static readonly string[] PixelArt = {
-            // PISTOL
-            "  _\n [_]--\n  |",
-            // SMG
-            " _____\n[=====]--\n  |  |",
-            // SHOTGUN
-            " ______\n[||||||]=\n    |",
-            // M4 RIFLE
-            " ________\n[========)--\n  /|",
-            // SNIPER
-            " __________\n[==========)---O\n     |",
+        // ── Fegyver képek ────────────────────────────────────────────────────
+        private Texture2D?[] weaponTextures = new Texture2D?[5];
+        private bool[]        weaponLoaded  = new bool[5];
+
+        // Fájlnév + háttérszín (fekete vagy fehér) per fegyver
+        private static readonly (string file, bool blackBg)[] WeaponImages = {
+            ("pistolpixelart.png",  true),   // Pistol  – fekete háttér
+            ("smgpixelart.png",     true),   // SMG     – fekete háttér
+            ("shotgunpixelart.png", false),  // Shotgun – fehér háttér
+            ("m4pixelart.png",      true),   // Rifle   – fekete háttér
+            ("sniperpixelart.png",  true),   // Sniper  – fekete háttér
         };
 
         public WeaponShop() {
@@ -38,13 +33,49 @@ namespace TheyAreComing {
                 btnWeapon[i] = new Rectangle(startX + i * (bw + gap), startY, bw, bh);
 
             btnClose = new Rectangle(300, 490, 200, 48);
+
+            // Fegyver képek betöltése
+            for (int i = 0; i < WeaponImages.Length; i++) {
+                var (file, blackBg) = WeaponImages[i];
+                string[] paths = {
+                    file,
+                    "./" + file,
+                    System.IO.Path.Combine(AppContext.BaseDirectory, file),
+                };
+                foreach (var p in paths) {
+                    if (!System.IO.File.Exists(p)) continue;
+                    try {
+                        Image img = Raylib.LoadImage(p);
+                        if (img.Width == 0 || img.Height == 0) continue;
+
+                        if (blackBg) {
+                            // Fekete háttér eltávolítása
+                            Raylib.ImageColorReplace(ref img, new Color(0,   0,   0,   255), new Color(0, 0, 0, 0));
+                            Raylib.ImageColorReplace(ref img, new Color(1,   1,   1,   255), new Color(0, 0, 0, 0));
+                            Raylib.ImageColorReplace(ref img, new Color(2,   2,   2,   255), new Color(0, 0, 0, 0));
+                        } else {
+                            // Fehér háttér eltávolítása (shotgun)
+                            Raylib.ImageColorReplace(ref img, new Color(255, 255, 255, 255), new Color(0, 0, 0, 0));
+                            Raylib.ImageColorReplace(ref img, new Color(254, 254, 254, 255), new Color(0, 0, 0, 0));
+                            Raylib.ImageColorReplace(ref img, new Color(253, 253, 253, 255), new Color(0, 0, 0, 0));
+                        }
+
+                        var tex = Raylib.LoadTextureFromImage(img);
+                        Raylib.UnloadImage(img);
+                        if (tex.Id != 0) {
+                            weaponTextures[i] = tex;
+                            weaponLoaded[i]   = true;
+                            break;
+                        }
+                    } catch { }
+                }
+            }
         }
 
         public void Open() {
             IsClosed = false;
         }
 
-        /// <returns>Visszaadja a választott fegyvert, ha vásárolt; null ha csak bezárta.</returns>
         public WeaponType? Update(SoldierPlayer player) {
             if (IsClosed) return null;
 
@@ -62,7 +93,6 @@ namespace TheyAreComing {
                         IsClosed = true;
                         return def.Type;
                     } else if (alreadyOwned) {
-                        // már van, csak bezárjuk
                         IsClosed = true;
                         return null;
                     }
@@ -77,10 +107,8 @@ namespace TheyAreComing {
         }
 
         public void Draw(SoldierPlayer player) {
-            // Félig átlátszó overlay
             Raylib.DrawRectangle(0, 0, 800, 600, new Color(0, 0, 0, 195));
 
-            // Fejléc
             string title = "WEAPON SHOP";
             Raylib.DrawText(title, 400 - Raylib.MeasureText(title, 38) / 2, 100, 38, Color.Gold);
 
@@ -100,7 +128,6 @@ namespace TheyAreComing {
                 bool afford = player.Money >= def.Cost;
                 bool hover  = Raylib.CheckCollisionPointRec(mp, b);
 
-                // Háttér
                 Color bg = owned
                     ? new Color(20, 70, 20, 255)
                     : (!afford ? new Color(40, 28, 28, 255)
@@ -115,32 +142,37 @@ namespace TheyAreComing {
                 Raylib.DrawRectangleRec(b, bg);
                 Raylib.DrawRectangleLinesEx(b, 2, border);
 
-                // ── Pixel art ikon (egyszerű szöveg-rajz) ───────────────────
-                DrawWeaponIcon(def.Type, (int)b.X + 8, (int)b.Y + 8,
-                               owned ? Color.Green : afford ? Color.SkyBlue : new Color(120,80,80,255));
+                // ── Ikon: kép vagy fallback rajzolt ikon ──────────────────
+                Color tint = owned  ? new Color(144, 238, 144, 255) :
+                             afford ? Color.White :
+                                      new Color(120, 80, 80, 255);
+
+                if (weaponLoaded[i] && weaponTextures[i].HasValue) {
+                    DrawWeaponImage(weaponTextures[i]!.Value, b, tint);
+                } else {
+                    DrawWeaponIconFallback(def.Type, (int)b.X + 8, (int)b.Y + 8,
+                        owned ? Color.Green : afford ? Color.SkyBlue : new Color(120, 80, 80, 255));
+                }
 
                 // Fegyver neve
-                Color nameCol = owned ? new Color(144, 238, 144, 255) : afford ? Color.White : new Color(150,100,100,255);
+                Color nameCol = owned ? new Color(144, 238, 144, 255) : afford ? Color.White : new Color(150, 100, 100, 255);
                 int nw = Raylib.MeasureText(def.Name, 14);
                 Raylib.DrawText(def.Name, (int)b.X + (int)b.Width / 2 - nw / 2,
                     (int)b.Y + 46, 14, nameCol);
 
-                // Ár / owned badge
                 string costStr = owned ? "✓ VAN" : (def.Cost == 0 ? "INGYENES" : $"${def.Cost}");
-                Color  costCol = owned ? new Color(144,238,144,255)
+                Color  costCol = owned ? new Color(144, 238, 144, 255)
                                : def.Cost == 0 ? Color.Gold
-                               : afford ? Color.Yellow : new Color(200,100,100,255);
+                               : afford ? Color.Yellow : new Color(200, 100, 100, 255);
                 int cw = Raylib.MeasureText(costStr, 13);
                 Raylib.DrawText(costStr, (int)b.X + (int)b.Width / 2 - cw / 2,
                     (int)b.Y + 65, 13, costCol);
 
-                // Tooltip (stat összefoglaló) – csak hover esetén
                 if (hover) {
                     DrawTooltip(def, (int)b.X + (int)b.Width / 2, (int)b.Y - 5);
                 }
             }
 
-            // Bezárás gomb
             bool overClose = Raylib.CheckCollisionPointRec(mp, btnClose);
             Raylib.DrawRectangleRec(btnClose, overClose ? new Color(80, 50, 50, 255) : new Color(45, 35, 35, 255));
             Raylib.DrawRectangleLinesEx(btnClose, 2, overClose ? Color.Red : new Color(120, 80, 80, 255));
@@ -149,61 +181,70 @@ namespace TheyAreComing {
                 (int)btnClose.Y + 17, 13, Color.LightGray);
         }
 
-        // ── Egyszerű pixel-art stílusú fegyver rajzoló ─────────────────────
-        private void DrawWeaponIcon(WeaponType t, int x, int y, Color c) {
+        /// <summary>
+        /// Egységes képmegjelenítés – ugyanaz a logika minden fegyvernél,
+        /// ugyanolyan méret és elhelyezés mint a shotgunnál.
+        /// </summary>
+        private static void DrawWeaponImage(Texture2D tex, Rectangle b, Color tint) {
+            float iconAreaX = b.X + 4;
+            float iconAreaY = b.Y + 4;
+            float iconAreaW = b.Width - 8;
+            float iconAreaH = 38f;
+
+            float texW = tex.Width;
+            float texH = tex.Height;
+
+            float scaleX = iconAreaW / texW;
+            float scaleY = iconAreaH / texH;
+            float scale  = MathF.Min(scaleX, scaleY);
+
+            float drawW = texW * scale;
+            float drawH = texH * scale;
+
+            float drawX = iconAreaX + (iconAreaW - drawW) / 2f;
+            float drawY = iconAreaY + (iconAreaH - drawH) / 2f;
+
+            Raylib.DrawTexturePro(
+                tex,
+                new Rectangle(0, 0, texW, texH),
+                new Rectangle(drawX, drawY, drawW, drawH),
+                Vector2.Zero, 0f, tint);
+        }
+
+        private static void DrawWeaponIconFallback(WeaponType t, int x, int y, Color c) {
             switch (t) {
                 case WeaponType.Pistol:
-                    // Cső
                     Raylib.DrawRectangle(x + 12, y + 12, 22, 6, c);
-                    // Markolat
                     Raylib.DrawRectangle(x + 14, y + 18, 10, 14, c);
-                    // Ravasz
                     Raylib.DrawRectangle(x + 18, y + 22, 2, 6, c);
                     break;
-
                 case WeaponType.SMG:
-                    // Cső (hosszabb)
                     Raylib.DrawRectangle(x + 6,  y + 12, 32, 6, c);
-                    // Test
                     Raylib.DrawRectangle(x + 14, y + 18, 18, 10, c);
-                    // Tár (lefelé)
                     Raylib.DrawRectangle(x + 20, y + 28, 8, 12, c);
                     break;
-
                 case WeaponType.Shotgun:
-                    // Hosszú dupla cső
                     Raylib.DrawRectangle(x + 4,  y + 10, 36, 5, c);
                     Raylib.DrawRectangle(x + 4,  y + 16, 36, 5, c);
-                    // Markolat
                     Raylib.DrawRectangle(x + 18, y + 21, 12, 12, c);
                     break;
-
                 case WeaponType.Rifle:
-                    // Hosszú cső
                     Raylib.DrawRectangle(x + 2,  y + 13, 44, 5, c);
-                    // Test
                     Raylib.DrawRectangle(x + 10, y + 18, 26, 8, c);
-                    // Tár
                     Raylib.DrawRectangle(x + 18, y + 26, 10, 10, c);
-                    // Sight
                     Raylib.DrawRectangle(x + 22, y + 10, 6, 4, c);
                     break;
-
                 case WeaponType.Sniper:
-                    // Extra hosszú cső
                     Raylib.DrawRectangle(x,      y + 14, 50, 4, c);
-                    // Test
                     Raylib.DrawRectangle(x + 8,  y + 18, 28, 7, c);
-                    // Tár
                     Raylib.DrawRectangle(x + 16, y + 25, 8, 10, c);
-                    // Scope
                     Raylib.DrawRectangle(x + 20, y +  8, 14, 7, c);
                     Raylib.DrawCircleLines(x + 27, y + 12, 5, c);
                     break;
             }
         }
 
-        private void DrawTooltip(WeaponDefinition def, int cx, int topY) {
+        private static void DrawTooltip(WeaponDefinition def, int cx, int topY) {
             string[] lines = {
                 def.Description,
                 $"Sebzés: {def.BulletDamage:F0}  |  Cooldown: {def.ShootCooldown:F2}s",
@@ -223,6 +264,13 @@ namespace TheyAreComing {
             for (int i = 0; i < lines.Length; i++)
                 Raylib.DrawText(lines[i], tx + pad, ty + pad + i * lineH, 11,
                     i == 0 ? Color.Gold : Color.LightGray);
+        }
+
+        public void Unload() {
+            for (int i = 0; i < weaponTextures.Length; i++) {
+                if (weaponLoaded[i] && weaponTextures[i].HasValue)
+                    Raylib.UnloadTexture(weaponTextures[i]!.Value);
+            }
         }
     }
 }
