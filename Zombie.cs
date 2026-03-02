@@ -37,6 +37,22 @@ namespace TheyAreComing {
 
         private float headshotFlashTimer = 0f;
 
+        // ── Barrikád ütési cooldown ────────────────────────────────────────
+        private float barrHitCooldown = 0f;
+        private float barrHitInterval = 0.8f;  // másodpercenként üt
+        private int   barrDmg = 20;
+
+        // ── Mozgási zóna (barna terület) ──────────────────────────────────
+        private float zoneMinX = 0f;
+        private float zoneMaxX = 800f;
+        private float zoneMinY = SoldierPlayer.AreaMinY;
+        private float zoneMaxY = SoldierPlayer.AreaMaxY;
+
+        // ── Barrikád blokkolás ─────────────────────────────────────────────
+        private List<Barricade>? barricades = null;
+        public void SetBarricades(List<Barricade> list) => barricades = list;
+        private bool isBlockedByBarricade = false;
+
         public static void LoadSprite(string path) {
             if (spriteSheet == null || spriteSheet.Value.Id == 0)
                 spriteSheet = Raylib.LoadTexture(path);
@@ -54,29 +70,41 @@ namespace TheyAreComing {
 
             switch (type) {
                 case ZombieType.Normal:
-                    MaxHealth = 50f;  speed = 60f;  Damage = 10; Reward = 10;
+                    MaxHealth = 50f;  speed = 42f;  Damage = 10; Reward = 10;
                     zombieColor = new Color(100, 150, 90, 255);
                     Scale = 2f; Size = 25f;
+                    barrDmg = 18; barrHitInterval = 0.9f;
                     break;
                 case ZombieType.Fast:
-                    MaxHealth = 30f;  speed = 100f; Damage = 8;  Reward = 15;
+                    MaxHealth = 30f;  speed = 70f; Damage = 8;  Reward = 15;
                     zombieColor = new Color(200, 150, 50, 255);
                     Scale = 1.8f; Size = 22f; frameSpeed = 0.12f;
+                    barrDmg = 12; barrHitInterval = 0.6f;
                     break;
                 case ZombieType.Tank:
                     MaxHealth = 150f; speed = 35f;  Damage = 20; Reward = 30;
                     zombieColor = new Color(80, 80, 100, 255);
                     Scale = 2.5f; Size = 35f; frameSpeed = 0.25f;
+                    barrDmg = 40; barrHitInterval = 1.0f;
                     break;
                 case ZombieType.Boss:
-                    MaxHealth = 300f; speed = 50f;  Damage = 30; Reward = 100;
+                    MaxHealth = 300f; speed = 36f;  Damage = 30; Reward = 100;
                     zombieColor = new Color(255, 100, 100, 255);
                     Scale = 3f; Size = 40f;
+                    barrDmg = 80; barrHitInterval = 1.2f;
                     break;
             }
 
             Health = MaxHealth;
             originalSpeed = speed;
+        }
+
+        /// <summary>Beállítja a barna területen belüli mozgási zónát.</summary>
+        public void SetMovementZone(float minX, float maxX, float minY, float maxY) {
+            zoneMinX = minX;
+            zoneMaxX = maxX;
+            zoneMinY = minY;
+            zoneMaxY = maxY;
         }
 
         public void SetTarget(SoldierPlayer player) => target = player;
@@ -92,7 +120,27 @@ namespace TheyAreComing {
                 Damage = (int)(Damage * 0.6f);
             }
 
-            if (target != null) {
+            // ── Barrikád közelség ellenőrzés ─────────────────────────
+            isBlockedByBarricade = false;
+            if (barricades != null) {
+                foreach (var barr in barricades) {
+                    if (!barr.IsAlive) continue;
+                    // Ütési zóna: kicsit nagyobb mint az ütközési zóna
+                    float attackRange = Size + 6f;
+                    float dx2 = MathF.Abs(X - barr.X);
+                    float dy2 = MathF.Abs(Y - barr.Y);
+                    if (dx2 < (Barricade.HalfW + attackRange) && dy2 < (Barricade.HalfH + attackRange)) {
+                        isBlockedByBarricade = true;
+                        // Pontosan a barrikád szélére tapasztjuk (ne menjen bele)
+                        float pushX = barr.X + Barricade.HalfW + Size;
+                        if (X < barr.X) pushX = barr.X - Barricade.HalfW - Size;
+                        X = pushX;
+                        break;
+                    }
+                }
+            }
+
+            if (!isBlockedByBarricade && target != null) {
                 float dirX = target.X - X, dirY = target.Y - Y;
                 float distance = MathF.Sqrt(dirX * dirX + dirY * dirY);
                 if (distance > 5f) {
@@ -101,11 +149,30 @@ namespace TheyAreComing {
                 }
             }
 
+            // ── Clamp a barna területre (miután belépett a képernyőre) ────
+            // Csak akkor clampelünk X-re ha a zombi már belépett a látható területre
+            // (X <= zoneMaxX), amíg kívülről sétál be, szabadon mozoghat
+            if (X <= zoneMaxX) {
+                X = Math.Clamp(X, zoneMinX, zoneMaxX);
+            }
+            Y = Math.Clamp(Y, zoneMinY, zoneMaxY);
+
             frameTimer += deltaTime;
             if (frameTimer >= frameSpeed) { currentFrame = (currentFrame + 1) % totalFrames; frameTimer = 0f; }
 
             headshotFlashTimer -= deltaTime;
+            if (barrHitCooldown > 0) barrHitCooldown -= deltaTime;
         }
+
+        /// <summary>Tud-e most ütni a barrikádra (cooldown lejárt).</summary>
+        public bool CanHitBarricade() {
+            if (barrHitCooldown > 0) return false;
+            barrHitCooldown = barrHitInterval;
+            return true;
+        }
+
+        /// <summary>Mennyi sebzést okoz a barrikádnak.</summary>
+        public int BarricadeDamage() => barrDmg;
 
         public void TakeDamage(float damage) {
             Health -= damage;

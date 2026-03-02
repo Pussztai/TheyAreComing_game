@@ -11,8 +11,15 @@ namespace TheyAreComing {
         private SoldierPlayer? player;
         private WaveManager?   waves;
 
+        private Texture2D background;
+        private bool backgroundLoaded = false;
+
         private UpgradeSystem upgradeSystem = new();
         private MetaShop      metaShop      = new();
+        private WeaponShop    weaponShop    = new();
+
+        // ── Barrikád lista ────────────────────────────────────────────────
+        private List<Barricade> barricades = new();
 
         private float rewardTimer       = 0f;
         private const float RewardDuration = 3f;
@@ -34,18 +41,33 @@ namespace TheyAreComing {
 
         public GameManager() {
             continueBtn = new Rectangle(300, 370, 200, 50);
+            LoadBackground();
+        }
+
+        private void LoadBackground() {
+            string[] paths = {
+                "background.png",
+                "./background.png",
+                System.IO.Path.Combine(AppContext.BaseDirectory, "background.png"),
+            };
+            foreach (var p in paths) {
+                if (System.IO.File.Exists(p)) {
+                    try {
+                        background = Raylib.LoadTexture(p);
+                        if (background.Id != 0) { backgroundLoaded = true; return; }
+                    } catch { }
+                }
+            }
         }
 
         public void Update(float dt) {
             switch (state) {
                 case GameState.MainMenu:
-                    if (mainMenu.Update())
-                        state = GameState.GameMenu;
+                    if (mainMenu.Update()) state = GameState.GameMenu;
                     break;
 
                 case GameState.GameMenu:
-                    if (gameMenu.Update())
-                        StartNewRun();
+                    if (gameMenu.Update()) StartNewRun();
                     break;
 
                 case GameState.Playing:
@@ -63,12 +85,20 @@ namespace TheyAreComing {
                     }
                     break;
 
+                case GameState.WeaponShopState:
+                    weaponShop.Update(player!);
+                    if (weaponShop.IsClosed) {
+                        rewardTimer = RewardDuration;
+                        state = GameState.WaveReward;
+                    }
+                    break;
+
                 case GameState.UpgradeSelect:
                     var chosen = upgradeSystem.Update(player!);
                     if (chosen != null && upgradeSystem.ContinueClicked) {
                         upgradeSystem.ApplyUpgrade(chosen, player!);
-                        rewardTimer = RewardDuration;
-                        state = GameState.WaveReward;
+                        weaponShop.Open();
+                        state = GameState.WeaponShopState;
                     }
                     break;
 
@@ -86,12 +116,13 @@ namespace TheyAreComing {
 
         public void Draw() {
             switch (state) {
-                case GameState.MainMenu:      mainMenu.Draw();                                                    break;
-                case GameState.GameMenu:      gameMenu.Draw();                                                    break;
-                case GameState.Playing:       DrawGame();                                                         break;
-                case GameState.WaveReward:    DrawGame(); DrawRewardOverlay();                                    break;
-                case GameState.UpgradeSelect: DrawGame(); upgradeSystem.Draw(player!);                                   break;
-                case GameState.GameOver:      metaShop.Draw(waves?.CurrentWave ?? 0, sessionKills, sessionGold); break;
+                case GameState.MainMenu:        mainMenu.Draw();                                                    break;
+                case GameState.GameMenu:        gameMenu.Draw();                                                    break;
+                case GameState.Playing:         DrawGame();                                                         break;
+                case GameState.WaveReward:      DrawGame(); DrawRewardOverlay();                                    break;
+                case GameState.WeaponShopState: DrawGame(); weaponShop.Draw(player!);                               break;
+                case GameState.UpgradeSelect:   DrawGame(); upgradeSystem.Draw(player!);                            break;
+                case GameState.GameOver:        metaShop.Draw(waves?.CurrentWave ?? 0, sessionKills, sessionGold); break;
             }
         }
 
@@ -101,6 +132,50 @@ namespace TheyAreComing {
             player.Update(dt);
             waves.Update(dt);
 
+            // ── Barrikád lehelyezés [B] gombbal ──────────────────────────
+            if (Raylib.IsKeyPressed(KeyboardKey.B) && upgradeSystem.BarricadeCount > 0) {
+                if (upgradeSystem.UseBarricade()) {
+                    // A player elé rakja (jobbra 60px)
+                    barricades.Add(new Barricade(player.X + 60, player.Y));
+                }
+            }
+
+            // ── Barrikád update (hit flash animáció) ─────────────────────
+            foreach (var barr in barricades) barr.Update(dt);
+
+            // ── Zombiknak megadjuk a barrikádok listáját ──────────────────
+            foreach (var zombie in waves.Zombies)
+                zombie.SetBarricades(barricades);
+
+            // ── Zombie vs Barrikád – ütési cooldown zombinként ────────────
+            foreach (var zombie in waves.Zombies) {
+                if (!zombie.IsAlive) continue;
+                foreach (var barr in barricades) {
+                    if (!barr.IsAlive) continue;
+                    if (barr.CheckCollision(zombie.X, zombie.Y, zombie.Size)) {
+                        // Zombi megáll a barrikádnál és üti – cooldown alapján
+                        if (zombie.CanHitBarricade()) {
+                            barr.TakeDamage(zombie.BarricadeDamage());
+                        }
+                    }
+                }
+            }
+
+            // ── Golyó megáll a barrikádnál ────────────────────────────────
+            foreach (var bullet in player.Bullets.ToList()) {
+                if (!bullet.IsActive) continue;
+                foreach (var barr in barricades) {
+                    if (!barr.IsAlive) continue;
+                    if (barr.CheckBulletCollision(bullet.X, bullet.Y)) {
+                        bullet.IsActive = false;
+                        break;
+                    }
+                }
+            }
+
+            barricades.RemoveAll(b => !b.IsAlive);
+
+            // ── Bullet vs Zombie ──────────────────────────────────────────
             foreach (var bullet in player.Bullets.ToList()) {
                 if (!bullet.IsActive) continue;
                 foreach (var zombie in waves.Zombies.ToList()) {
@@ -111,8 +186,7 @@ namespace TheyAreComing {
                         zombie.TakeDamage(dmg);
                         bullet.IsActive = false;
 
-                        if (player.Lifesteal > 0)
-                            player.Heal(dmg * player.Lifesteal);
+                        if (player.Lifesteal > 0) player.Heal(dmg * player.Lifesteal);
 
                         if (isHeadshot) {
                             headshotMsg   = "HEADSHOT!";
@@ -156,9 +230,11 @@ namespace TheyAreComing {
                 lastRewardGold = bonus;
 
                 if (waves.CurrentWave % 3 == 0) {
+                    // ── Minden 3. körben: upgrade + weaponshop ──────────
                     upgradeSystem.GenerateOptions();
                     state = GameState.UpgradeSelect;
                 } else {
+                    // ── 1-2. kör: csak wave reward képernyő ────────────
                     rewardTimer = RewardDuration;
                     state = GameState.WaveReward;
                 }
@@ -168,12 +244,27 @@ namespace TheyAreComing {
         private void DrawGame() {
             Raylib.ClearBackground(new Color(22, 22, 30, 255));
 
-            // Háttér grid
-            for (int x = 0; x < 800; x += 60)
-                Raylib.DrawLine(x, 40, x, 600, new Color(30, 30, 40, 255));
-            for (int y = 40; y < 600; y += 60)
-                Raylib.DrawLine(0, y, 800, y, new Color(30, 30, 40, 255));
+            if (backgroundLoaded) {
+                float scaleX = 800f / background.Width;
+                float scaleY = 600f / background.Height;
+                float scale  = MathF.Max(scaleX, scaleY);
+                float drawW  = background.Width  * scale;
+                float drawH  = background.Height * scale;
+                float offX   = (800f - drawW) / 2f;
+                float offY   = (600f - drawH) / 2f;
+                Raylib.DrawTexturePro(background,
+                    new Rectangle(0, 0, background.Width, background.Height),
+                    new Rectangle(offX, offY, drawW, drawH),
+                    Vector2.Zero, 0f, Color.White);
+                Raylib.DrawRectangle(0, 0, 800, 600, new Color(0, 0, 0, 80));
+            } else {
+                for (int x = 0; x < 800; x += 60)
+                    Raylib.DrawLine(x, 40, x, 600, new Color(30, 30, 40, 255));
+                for (int y = 40; y < 600; y += 60)
+                    Raylib.DrawLine(0, y, 800, y, new Color(30, 30, 40, 255));
+            }
 
+            foreach (var b in barricades) b.Draw();
             waves?.Draw();
             player?.Draw();
 
@@ -183,11 +274,12 @@ namespace TheyAreComing {
                     new Color((byte)255, (byte)80, (byte)0, a));
             }
 
-            player?.DrawTopBar(waves?.CurrentWave ?? 0, waves?.Zombies.Count(z => z.IsAlive) ?? 0);
+            player?.DrawTopBar(waves?.CurrentWave ?? 0,
+                               waves?.Zombies.Count(z => z.IsAlive) ?? 0);
 
             Raylib.DrawRectangle(0, 587, 800, 13, new Color(0, 0, 0, 170));
-            Raylib.DrawText("WASD-Move  |  LMB-Shoot  |  R-Reload",
-                400 - Raylib.MeasureText("WASD-Move  |  LMB-Shoot  |  R-Reload", 11) / 2,
+            Raylib.DrawText("WASD-Move | LMB-Shoot | R-Reload | B-Barricade",
+                400 - Raylib.MeasureText("WASD-Move | LMB-Shoot | R-Reload | B-Barricade", 11) / 2,
                 589, 11, new Color(160, 160, 160, 255));
         }
 
@@ -221,9 +313,10 @@ namespace TheyAreComing {
         private void StartNewRun() {
             player?.Unload();
             waves?.Unload();
+            barricades.Clear();
 
             player = new SoldierPlayer(
-                "soldier_pistol_spritesheet.png",
+                "playerImg_default_clean.png",
                 metaShop.PermanentMaxHPBonus,
                 metaShop.PermanentDamageBonus,
                 metaShop.PermanentSpeedBonus
@@ -239,6 +332,7 @@ namespace TheyAreComing {
         public void Unload() {
             player?.Unload();
             waves?.Unload();
+            if (backgroundLoaded) Raylib.UnloadTexture(background);
         }
     }
 }

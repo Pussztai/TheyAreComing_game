@@ -4,6 +4,7 @@ namespace TheyAreComing {
         GameMenu,
         Playing,
         WaveReward,
+        WeaponShopState,
         UpgradeSelect,
         GameOver,
     }

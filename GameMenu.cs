@@ -22,8 +22,35 @@ namespace TheyAreComing {
 
         public bool Update() {
             Vector2 mousePos = Raylib.GetMousePosition();
+
+            // GitHub gomb
+            if (Raylib.CheckCollisionPointRec(mousePos, shopButton)
+                && Raylib.IsMouseButtonPressed(MouseButton.Left)) {
+                OpenUrl("https://github.com/Pussztai");
+            }
+
+            // Discord gomb
+            if (Raylib.CheckCollisionPointRec(mousePos, howToPlayButton)
+                && Raylib.IsMouseButtonPressed(MouseButton.Left)) {
+                OpenUrl("https://discord.com/users/675352730595754015");
+            }
+
             return Raylib.CheckCollisionPointRec(mousePos, newCampaignButton)
                    && Raylib.IsMouseButtonPressed(MouseButton.Left);
+        }
+
+        private void OpenUrl(string url) {
+            try {
+                if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+                        System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+                } else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+                        System.Runtime.InteropServices.OSPlatform.Linux)) {
+                    System.Diagnostics.Process.Start("xdg-open", url);
+                } else {
+                    System.Diagnostics.Process.Start("open", url);
+                }
+            } catch { }
         }
 
         public void Draw() {
