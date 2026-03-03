@@ -16,13 +16,13 @@ namespace TheyAreComing {
         public string Name;
         public string Description;
         public int    Cost;
-        public float  ShootCooldown;   // másodperc lövések között
+        public float  ShootCooldown;   
         public float  BulletDamage;
         public int    MaxAmmo;
         public float  ReloadTime;
-        public int    PelletCount;     // Shotgun esetén több lövedék
-        public float  Spread;          // szórás szög (radián)
-        public string PixelIcon;       // ASCII pixel art / label
+        public int    PelletCount;    
+        public float  Spread;         
+        public string PixelIcon;       
 
         public WeaponDefinition(WeaponType type, string name, string desc, int cost,
                                 float shootCooldown, float bulletDamage, int maxAmmo,
@@ -50,17 +50,17 @@ namespace TheyAreComing {
             ),
             new WeaponDefinition(
                 WeaponType.Shotgun, "Shotgun", "Közelről halálos, 5 pellet egyszerre.",
-                cost: 200, shootCooldown: 0.75f, bulletDamage: 14f, maxAmmo: 8,
+                cost: 200, shootCooldown: 0.75f, bulletDamage: 20f, maxAmmo: 8,
                 reloadTime: 2.5f, pelletCount: 5, spread: 0.25f, pixelIcon: "SHOTGUN"
             ),
             new WeaponDefinition(
                 WeaponType.Rifle, "M4 Rifle", "Nagy sebzés, közepes tűzgyorsaság.",
-                cost: 350, shootCooldown: 0.18f, bulletDamage: 35f, maxAmmo: 25,
+                cost: 350, shootCooldown: 0.18f, bulletDamage: 40f, maxAmmo: 30,
                 reloadTime: 2.2f, pixelIcon: "M4"
             ),
             new WeaponDefinition(
                 WeaponType.Sniper, "Sniper", "Lassú, de hatalmas sebzés. Fejlövés!",
-                cost: 500, shootCooldown: 1.20f, bulletDamage: 120f, maxAmmo: 5,
+                cost: 500, shootCooldown: 1.20f, bulletDamage: 130f, maxAmmo: 5,
                 reloadTime: 3.0f, pixelIcon: "SNIPER"
             ),
         };

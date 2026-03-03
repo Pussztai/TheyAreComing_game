@@ -8,10 +8,10 @@ namespace TheyAreComing {
         public float VelocityY { get; set; }
         public bool IsActive { get; set; } = true;
 
-        private const float Speed = 800f;
-        private const float Radius = 3f;
+        private const float Speed = 1000f;
+        private float radius;
 
-        public Bullet(float startX, float startY, float directionX, float directionY) {
+        public Bullet(float startX, float startY, float directionX, float directionY, WeaponType weaponType = WeaponType.Pistol) {
             X = startX;
             Y = startY;
             float length = MathF.Sqrt(directionX * directionX + directionY * directionY);
@@ -19,6 +19,12 @@ namespace TheyAreComing {
                 VelocityX = (directionX / length) * Speed;
                 VelocityY = (directionY / length) * Speed;
             }
+
+            radius = weaponType switch {
+                WeaponType.Rifle => 4.5f,
+                WeaponType.Sniper => 5.5f,
+                _ => 3f,
+            };
         }
 
         public void Update(float deltaTime) {
@@ -31,8 +37,8 @@ namespace TheyAreComing {
 
         public void Draw() {
             if (!IsActive) return;
-            Raylib.DrawCircle((int)X, (int)Y, Radius, Color.Yellow);
-            Raylib.DrawCircle((int)X, (int)Y, Radius - 1, Color.White);
+            Raylib.DrawCircle((int)X, (int)Y, radius, Color.Yellow);
+            Raylib.DrawCircle((int)X, (int)Y, radius - 1, Color.White);
         }
     }
 }

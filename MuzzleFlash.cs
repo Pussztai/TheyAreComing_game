@@ -3,17 +3,12 @@ using System.Numerics;
 
 namespace TheyAreComing {
 
-    /// <summary>
-    /// Muzzle flash effekt a fegyver csövének végénél.
-    /// Kódból rajzolt sugarak + sprite sheet overlay kombinációja.
-    /// Garantáltan látszódik minden fegyvernél.
-    /// </summary>
+    
     public class MuzzleFlash {
 
         private Texture2D? spriteTexture;
         private bool       spriteLoaded = false;
 
-        // Sprite sheet: 4 oszlop × 5 sor = 20 frame, egyenként 10×8 px
         private const int Cols        = 4;
         private const int Rows        = 5;
         private const int TotalFrames = Cols * Rows;
@@ -24,14 +19,13 @@ namespace TheyAreComing {
         private float spriteTimer  = 0f;
         private const float FrameSpeed = 0.035f;
 
-        // Flash state
         private bool  isPlaying   = false;
         private float flashX, flashY;
-        private float angle;           // radián
-        private float flashScale;      // fegyver méret szorzó
+        private float angle;           
+        private float flashScale;      
 
-        private float lifetime    = 0f;   // összidő eltelt
-        private const float MaxLife = 0.12f;  // 120ms – gyors villanás
+        private float lifetime    = 0f;  
+        private const float MaxLife = 0.12f;  
 
         public MuzzleFlash(string texturePath) {
             try {
@@ -77,24 +71,19 @@ namespace TheyAreComing {
             float cosA = MathF.Cos(angle);
             float sinA = MathF.Sin(angle);
 
-            // ── 1. Belső mag – fehér kör ─────────────────────────────────────
             byte coreAlpha = (byte)(255 * t);
             float coreR    = baseSize * 0.45f;
             Raylib.DrawCircle((int)flashX, (int)flashY, coreR,
                 new Color((byte)255, (byte)255, (byte)200, coreAlpha));
 
-            // ── 2. Külső narancssárga glóriás kör ───────────────────────────
             byte glowAlpha = (byte)(160 * t);
             Raylib.DrawCircle((int)flashX, (int)flashY, baseSize * 0.85f,
                 new Color((byte)255, (byte)140, (byte)0, glowAlpha));
-
-            // ── 3. Fősugar előre (cső irányába) ─────────────────────────────
             float rayLen = baseSize * 2.2f;
             float rayW   = baseSize * 0.55f;
             DrawRay(flashX, flashY, cosA, sinA, rayLen, rayW,
                     new Color((byte)255, (byte)220, (byte)100, (byte)(230 * t)));
 
-            // ── 4. Keresztsugar (merőleges) ──────────────────────────────────
             float crossLen = baseSize * 1.1f;
             float crossW   = baseSize * 0.28f;
             DrawRay(flashX, flashY, -sinA, cosA, crossLen, crossW,
@@ -102,7 +91,6 @@ namespace TheyAreComing {
             DrawRay(flashX, flashY,  sinA, -cosA, crossLen, crossW,
                     new Color((byte)255, (byte)180, (byte)50, (byte)(170 * t)));
 
-            // ── 5. Kis szikrák random irányban ───────────────────────────────
             float seed = lifetime * 1000f;
             for (int i = 0; i < 5; i++) {
                 float sa = angle + (((seed * (i + 1) * 7919f) % 628) / 100f - 3.14f) * 0.8f;
@@ -113,7 +101,6 @@ namespace TheyAreComing {
                     new Color((byte)255, (byte)200, (byte)80, (byte)(180 * t)));
             }
 
-            // ── 6. Sprite sheet overlay (additive) – ha betöltött ───────────
             if (spriteLoaded && spriteTexture.HasValue) {
                 int col = spriteFrame % Cols;
                 int row = spriteFrame / Cols;
@@ -131,14 +118,11 @@ namespace TheyAreComing {
             }
         }
 
-        /// <summary>Egy sugár (téglalap) rajzolása irány + szélesség alapján.</summary>
         private static void DrawRay(float ox, float oy,
                                     float dx, float dy,
                                     float length, float width, Color color) {
-            // Merőleges vektor a szélességhez
             float px = -dy, py = dx;
 
-            // 4 sarokpont
             Vector2 p0 = new Vector2(ox + px * width / 2f,        oy + py * width / 2f);
             Vector2 p1 = new Vector2(ox - px * width / 2f,        oy - py * width / 2f);
             Vector2 p2 = new Vector2(ox + dx * length - px * width / 2f,

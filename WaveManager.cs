@@ -18,9 +18,7 @@ namespace TheyAreComing {
 
         private float zombieHealthMultiplier = 1f;
 
-        // ── Zombie mozgási terület (barna föld) – azonos a playerével ─────
-        // X: jobb oldalról jönnek be (spawn X = 850+)
-        // Y: barna terület
+        
         private const float ZoneMinY = SoldierPlayer.AreaMinY;
         private const float ZoneMaxY = SoldierPlayer.AreaMaxY;
 
@@ -44,7 +42,6 @@ namespace TheyAreComing {
             };
             toSpawn = baseCount;
 
-            // Korai körökben lassabb spawn
             spawnInterval = CurrentWave switch {
                 1 => 2.5f,
                 2 => 1.8f,
@@ -88,8 +85,7 @@ namespace TheyAreComing {
         }
 
         private void SpawnZombie() {
-            // Képernyőn jól kívül spawnol (a legnagyobb zombie ~150px széles Scale=3x-nél)
-            // 800 (screen width) + 200 buffer = 1000px biztosan nem látható
+            
             float sx = 1000f + Random.Shared.NextSingle() * 100f;
             float sy = Random.Shared.NextSingle() * (ZoneMaxY - ZoneMinY) + ZoneMinY;
 
@@ -110,7 +106,6 @@ namespace TheyAreComing {
             zombie.Health    *= zombieHealthMultiplier;
             zombie.MaxHealth *= zombieHealthMultiplier;
             zombie.SetTarget(player);
-            // Megadjuk a mozgási zónát a zombinak is
             zombie.SetMovementZone(SoldierPlayer.AreaMinX, SoldierPlayer.AreaMaxX,
                                    ZoneMinY, ZoneMaxY);
             Zombies.Add(zombie);

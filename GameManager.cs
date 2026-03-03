@@ -38,8 +38,8 @@ namespace TheyAreComing {
         private float damageCooldown = 0f;
         private const float DamageCooldownTime = 0.7f;
 
-        private const float HeadshotDamage = 10f;
-        private const float BodyshotDamage = 5f;
+        private const float HeadshotDamage = 17f;
+        private const float BodyshotDamage = 7f;
 
         private bool isPlayground = false;
         private bool isHard = false;

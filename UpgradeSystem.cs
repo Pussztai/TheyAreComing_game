@@ -84,7 +84,6 @@ namespace TheyAreComing {
                 }
             }
 
-            // Med kit button
             bool medHover = Raylib.CheckCollisionPointRec(mp, medKitBtn);
             if (medHover && Raylib.IsMouseButtonPressed(MouseButton.Left)
                 && !medKitPurchased && player.Money >= 100) {
@@ -93,7 +92,6 @@ namespace TheyAreComing {
                 medKitPurchased = true;
             }
 
-            // Barricade button ($100 each, max 3x per round)
             bool barrHover = Raylib.CheckCollisionPointRec(mp, barricadeBtn);
             if (barrHover && Raylib.IsMouseButtonPressed(MouseButton.Left)
                 && barrPurchaseCount < 3 && player.Money >= 100) {
@@ -150,10 +148,8 @@ namespace TheyAreComing {
         }
 
         public void Draw(SoldierPlayer player) {
-            // Background overlay
             Raylib.DrawRectangle(0, 0, 800, 600, new Color(0, 0, 0, 220));
 
-            // Header
             Raylib.DrawRectangle(0, 130, 800, 58, new Color(15, 15, 25, 240));
             Raylib.DrawRectangle(0, 130, 800, 2, new Color(180, 140, 0, 200));
             Raylib.DrawRectangle(0, 186, 800, 2, new Color(60, 60, 80, 180));
@@ -164,7 +160,6 @@ namespace TheyAreComing {
             string sub = "Choose an upgrade, then press Continue";
             Raylib.DrawText(sub, 400 - Raylib.MeasureText(sub, 12) / 2, 174, 12, new Color(140, 140, 160, 255));
 
-            // Upgrade cards
             for (int i = 0; i < 3; i++) {
                 var b = buttons[i];
                 bool sel = selectedIndex == i;
@@ -224,12 +219,10 @@ namespace TheyAreComing {
 
             Vector2 mp2 = Raylib.GetMousePosition();
 
-            // Shop section
             Raylib.DrawRectangle(0, 398, 800, 18, new Color(10, 10, 18, 220));
             string shopTitle = "━━  SHOP  ━━";
             Raylib.DrawText(shopTitle, 400 - Raylib.MeasureText(shopTitle, 12) / 2, 402, 12, new Color(120, 120, 150, 200));
 
-            // Med Kit button
             DrawShopBtn(medKitBtn, mp2, medKitPurchased, player.Money >= 100,
                 medKitPurchased ? "✓  FIRST AID USED" : "FIRST AID KIT",
                 medKitPurchased ? "Full HP restored" : $"Restore full HP  —  $100",
@@ -237,7 +230,6 @@ namespace TheyAreComing {
                 new Color(55, 15, 15, 255), new Color(80, 22, 22, 255),
                 new Color(150, 45, 45, 255), new Color(220, 70, 70, 255));
 
-            // Barricade button
             bool barrMaxed = barrPurchaseCount >= 3;
             bool canBarr = player.Money >= 100 && !barrMaxed;
             string barrTitle = barrMaxed ? "✓  MAX BARRICADES" : $"BARRICADE  —  $100";
@@ -247,7 +239,6 @@ namespace TheyAreComing {
                 new Color(28, 38, 14, 255), new Color(45, 60, 20, 255),
                 new Color(90, 120, 40, 255), new Color(140, 185, 55, 255));
 
-            // Continue button
             bool showContinue = selectedIndex >= 0;
             bool contHover2 = Raylib.CheckCollisionPointRec(mp2, continueBtn);
 
@@ -272,7 +263,6 @@ namespace TheyAreComing {
                     (int)continueBtn.Y + 19, 12, new Color(75, 75, 92, 255));
             }
 
-            // Money display
             Raylib.DrawRectangle(0, 574, 800, 26, new Color(0, 0, 0, 180));
             string moneyStr = player.IsPlayground ? "∞" : $"$  {player.Money}";
             Color moneyCol = player.IsPlayground ? Color.SkyBlue : Color.Gold;

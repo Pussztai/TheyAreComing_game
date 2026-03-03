@@ -10,7 +10,6 @@ namespace TheyAreComing {
         public int   MaxHP { get; private set; } = 800;
         public bool  IsAlive => HP > 0;
 
-        // 90 fokkal elfordítva – magasabb mint széles
         public const float HalfW = 22f;
         public const float HalfH = 56f;
 
@@ -30,14 +29,12 @@ namespace TheyAreComing {
             if (hitFlashTimer > 0) hitFlashTimer -= dt;
         }
 
-        /// <summary>Zombi ütközés – blokkolja a zombit.</summary>
         public bool CheckCollision(float zx, float zy, float radius) {
             float dx = MathF.Abs(zx - X);
             float dy = MathF.Abs(zy - Y);
             return dx < (HalfW + radius) && dy < (HalfH + radius);
         }
 
-        /// <summary>Golyó ÁTMEGY a barrikádon (mindig false).</summary>
         public bool CheckBulletCollision(float bx, float by) {
             return false;
         }
@@ -59,10 +56,8 @@ namespace TheyAreComing {
             Color woodLight = new Color((byte)(180*d+25), (byte)(120*d+15), (byte)(60*d+8), (byte)255);
             Color nail = new Color(200, 200, 180, 255);
 
-            // Alap téglatest
             Raylib.DrawRectangle(left, top, w, h, woodDark);
 
-            // 3 FÜGGŐLEGES deszka oszlop (90 fokkal elforgatva)
             int colW = w / 3;
             for (int col = 0; col < 3; col++) {
                 int cx = left + col * colW;
@@ -71,21 +66,17 @@ namespace TheyAreComing {
                 Raylib.DrawLine(cx + 1, top + 1, cx + 1, top + h - 1, woodLight);
             }
 
-            // Vízszintes tartógerendák (volt: függőleges oszlopok)
             foreach (int py in new[]{ top + h/4, top + h/2, top + 3*h/4 }) {
                 Raylib.DrawRectangle(left, py - 3, w, 6, woodDark);
                 Raylib.DrawRectangle(left + 1, py - 2, w - 2, 2, woodLight);
             }
 
-            // Szegecs sarkok
             foreach (int nx in new[]{ left+3, left+w-6 })
                 foreach (int ny in new[]{ top+4, top+h/4-3, top+h/2-3, top+3*h/4-3, top+h-7 })
                     Raylib.DrawRectangle(nx, ny, 4, 4, nail);
 
-            // Keret
             Raylib.DrawRectangleLinesEx(new Rectangle(left, top, w, h), 2, new Color(60, 35, 10, 255));
 
-            // Repedések károsodás szerint
             Color crk1 = new Color(40, 20, 5, 200);
             Color crk2 = new Color(20, 8, 0, 240);
             if (hpPct < 0.75f) {
@@ -105,7 +96,6 @@ namespace TheyAreComing {
                 Raylib.DrawRectangle(left+w-2, top + 3*h/4, 4, 7, new Color(22,22,30,255));
             }
 
-            // HP sáv
             Color hpCol = hpPct > 0.5f  ? new Color(80, 200, 80, 220) :
                           hpPct > 0.25f ? new Color(230, 150, 30, 220) :
                                           new Color(220, 40, 40, 220);
@@ -114,7 +104,6 @@ namespace TheyAreComing {
         }
 
         public static void DrawIcon(int x, int y, int size, Color tint) {
-            // Függőleges ikon (90 fokkal elfordítva: magasabb mint széles)
             int hw = (int)(size * 0.55f), hh = size;
             int left = x - hw/2, top = y - hh/2;
             Color wood = new Color(
@@ -126,7 +115,6 @@ namespace TheyAreComing {
             int dw = hw / 3;
             for (int i = 0; i < 3; i++)
                 Raylib.DrawRectangle(left + i*dw + 1, top+1, dw-1, hh-2, wood);
-            // Vízszintes tartók
             Raylib.DrawRectangle(left, top + hh/3, hw, 2, dark);
             Raylib.DrawRectangle(left, top + 2*hh/3, hw, 2, dark);
             Raylib.DrawLine(left, top, left, top+hh, light);

@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace TheyAreComing {
     public class MainMenu {
-        private const int ScreenWidth  = 800;
+        private const int ScreenWidth = 800;
         private const int ScreenHeight = 600;
         private Rectangle startButton;
 
@@ -20,9 +20,11 @@ namespace TheyAreComing {
         public void Draw() {
             Raylib.ClearBackground(Color.Black);
 
-            string title = "THEY ARE COMING";
+            string title = "THEY ARE KILLING";
             int titleWidth = Raylib.MeasureText(title, 60);
             Raylib.DrawText(title, ScreenWidth / 2 - titleWidth / 2, 150, 60, Color.Red);
+
+           
 
             Vector2 mousePos = Raylib.GetMousePosition();
             bool isMouseOverStart = Raylib.CheckCollisionPointRec(mousePos, startButton);
@@ -34,9 +36,15 @@ namespace TheyAreComing {
             string buttonText = "START";
             int textWidth = Raylib.MeasureText(buttonText, 30);
             Raylib.DrawText(buttonText,
-                (int)startButton.X + (int)startButton.Width  / 2 - textWidth / 2,
+                (int)startButton.X + (int)startButton.Width / 2 - textWidth / 2,
                 (int)startButton.Y + 15,
                 30, Color.White);
+
+            string ver = "v1.0  |  Pusztai Attila  &  Claude AI";
+            Raylib.DrawText(ver,
+                ScreenWidth / 2 - Raylib.MeasureText(ver, 11) / 2,
+                ScreenHeight - 22, 11,
+                new Color(55, 55, 55, 200));
         }
     }
 }

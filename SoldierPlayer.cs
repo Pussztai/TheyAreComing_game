@@ -53,6 +53,10 @@ namespace TheyAreComing {
         private MuzzleFlash muzzleFlash;
         private const float RenderScale = 0.36f;
 
+        private float muzzleX = 0f;
+        private float muzzleY = 0f;
+        private float muzzleAngle = 0f;
+
         private static string ResolvePath(string filename) {
             string[] candidates = {
                 filename,
@@ -83,6 +87,15 @@ namespace TheyAreComing {
             BulletDamage = def.BulletDamage; MaxAmmo = def.MaxAmmo; Ammo = MaxAmmo;
             reloadTime = def.ReloadTime; pelletCount = def.PelletCount; spread = def.Spread;
             IsReloading = false; reloadTimer = 0f;
+        }
+
+       
+        private (float mx, float my) GetMuzzlePosition() {
+            
+            const float GUN_OFFSET_X = 28f;  
+            const float GUN_OFFSET_Y = -12f;  
+
+            return (X + GUN_OFFSET_X, Y + GUN_OFFSET_Y);
         }
 
         public void Update(float deltaTime) {
@@ -121,6 +134,11 @@ namespace TheyAreComing {
             float length = MathF.Sqrt(dirX * dirX + dirY * dirY);
             if (length > 0) { aimDirection.X = dirX / length; aimDirection.Y = dirY / length; }
 
+            var (mx, my) = GetMuzzlePosition();
+            muzzleX = mx;
+            muzzleY = my;
+            muzzleAngle = MathF.Atan2(aimDirection.Y, aimDirection.X);
+
             shootCooldown -= deltaTime;
             if (Raylib.IsMouseButtonDown(MouseButton.Left) && shootCooldown <= 0 && !IsReloading && Ammo > 0) {
                 Shoot(); shootCooldown = ShootCooldownTime; Ammo--;
@@ -133,23 +151,18 @@ namespace TheyAreComing {
         }
 
         private void Shoot() {
-            float aimAngle = MathF.Atan2(aimDirection.Y, aimDirection.X);
-            const float fwd = 40f;
-            const float side = 14f;
-            float cosA = MathF.Cos(aimAngle), sinA = MathF.Sin(aimAngle);
-            muzzleFlash.Trigger(X + cosA * fwd - sinA * side, Y + sinA * fwd + cosA * side,
-                                aimAngle, GetWeaponFlashScale());
+            muzzleFlash.Trigger(muzzleX, muzzleY, muzzleAngle, GetWeaponFlashScale());
 
             if (pelletCount <= 1) {
                 Bullets.Add(new Bullet(X + aimDirection.X * 25, Y + aimDirection.Y * 25,
-                                       aimDirection.X, aimDirection.Y));
+                                       aimDirection.X, aimDirection.Y, CurrentWeapon));
             } else {
                 float baseAngle = MathF.Atan2(aimDirection.Y, aimDirection.X);
                 float hs = spread / 2f;
                 for (int i = 0; i < pelletCount; i++) {
                     float a = baseAngle - hs + spread * i / (pelletCount - 1);
                     Bullets.Add(new Bullet(X + MathF.Cos(a) * 20, Y + MathF.Sin(a) * 20,
-                                           MathF.Cos(a), MathF.Sin(a)));
+                                           MathF.Cos(a), MathF.Sin(a), CurrentWeapon));
                 }
             }
         }
@@ -294,31 +307,42 @@ namespace TheyAreComing {
                 hasBarr ? new Color(160, 210, 70, 200) : new Color(60, 60, 60, 200));
 
             if (hasBarr) {
-                int ix = slotX + 18, iy = slotY + 18;
+                
+                int ix = slotX + 4;       
+                int iy = slotY + 11;     
+                int iw = 28;              
+                int ih = slotH - 16;      
+
                 Color wood = new Color(160, 100, 40, 255);
                 Color woodDark = new Color(90, 55, 18, 255);
                 Color woodLight = new Color(210, 150, 70, 255);
                 Color nail = new Color(220, 215, 185, 255);
-                Raylib.DrawRectangle(ix - 8, iy - 11, 15, 22, woodDark);
-                int colW = 15 / 3;
-                for (int c = 0; c < 3; c++) {
-                    Raylib.DrawRectangle(ix - 8 + c * colW + 1, iy - 10, colW - 1, 20, wood);
-                    Raylib.DrawLine(ix - 8 + c * colW, iy - 11, ix - 8 + c * colW, iy + 11, woodDark);
-                }
-                foreach (int py in new[] { iy - 4, iy + 3 }) {
-                    Raylib.DrawRectangle(ix - 8, py - 1, 15, 3, woodDark);
-                    Raylib.DrawRectangle(ix - 7, py, 13, 1, woodLight);
-                }
-                Raylib.DrawRectangle(ix - 8, iy - 11, 3, 3, nail);
-                Raylib.DrawRectangle(ix + 5, iy - 11, 3, 3, nail);
-                Raylib.DrawRectangle(ix - 8, iy + 9, 3, 3, nail);
-                Raylib.DrawRectangle(ix + 5, iy + 9, 3, 3, nail);
-                Raylib.DrawRectangleLinesEx(new Rectangle(ix - 8, iy - 11, 15, 22), 1, new Color(55, 30, 8, 255));
 
-                Raylib.DrawText($"x{barricadeCount}", slotX + 38, slotY + 11, 18, new Color(200, 250, 90, 255));
+                Raylib.DrawRectangle(ix, iy, iw, ih, woodDark);
+
+                int colW = iw / 3;
+                for (int c = 0; c < 3; c++) {
+                    int cx = ix + c * colW;
+                    Raylib.DrawRectangle(cx + 1, iy + 1, colW - 2, ih - 2, wood);
+                    Raylib.DrawRectangle(cx, iy, 1, ih, woodDark);
+                }
+
+                foreach (int py in new[] { iy + ih / 3, iy + 2 * ih / 3 }) {
+                    Raylib.DrawRectangle(ix, py - 1, iw, 3, woodDark);
+                    Raylib.DrawRectangle(ix + 1, py, iw - 2, 1, woodLight);
+                }
+
+                Raylib.DrawRectangle(ix + 1, iy + 1, 3, 3, nail);
+                Raylib.DrawRectangle(ix + iw - 4, iy + 1, 3, 3, nail);
+                Raylib.DrawRectangle(ix + 1, iy + ih - 4, 3, 3, nail);
+                Raylib.DrawRectangle(ix + iw - 4, iy + ih - 4, 3, 3, nail);
+
+                Raylib.DrawRectangleLinesEx(new Rectangle(ix, iy, iw, ih), 1, new Color(55, 30, 8, 255));
+
+                Raylib.DrawText($"x{barricadeCount}", slotX + 36, slotY + 8, 18, new Color(200, 250, 90, 255));
 
                 if (hovered)
-                    Raylib.DrawText("click: place", slotX + 4, slotY + 26, 8, new Color(220, 255, 120, 200));
+                    Raylib.DrawText("place", slotX + 36, slotY + 24, 9, new Color(220, 255, 120, 200));
             } else {
                 Raylib.DrawText("empty", slotX + slotW / 2 - Raylib.MeasureText("empty", 12) / 2,
                     slotY + 12, 12, new Color(50, 50, 50, 200));
