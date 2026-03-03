@@ -36,25 +36,24 @@ namespace TheyAreComing {
 
         private List<Upgrade> currentOptions = new();
         private Rectangle[] buttons = new Rectangle[3];
-        private bool[] hovered   = new bool[3];
+        private bool[] hovered = new bool[3];
         private int selectedIndex = -1;
 
         private Rectangle continueBtn;
         private Rectangle medKitBtn;
-        private Rectangle barricadeBtn;   // ← ÚJ
-        private bool medKitPurchased  = false;
-        private int  barrPurchaseCount = 0;   // egy körben max 3x vehető (1 db/vásárlás)
+        private Rectangle barricadeBtn;
+        private bool medKitPurchased = false;
+        private int barrPurchaseCount = 0;
 
-        public bool ContinueClicked  { get; private set; } = false;
+        public bool ContinueClicked { get; private set; } = false;
         private Upgrade? pendingUpgrade = null;
 
-        // Hány barrikád van a játékosnál
         public int BarricadeCount { get; private set; } = 0;
 
         public UpgradeSystem() {
-            continueBtn  = new Rectangle(300, 510, 200, 50);
-            medKitBtn    = new Rectangle(170, 415, 210, 55);
-            barricadeBtn = new Rectangle(420, 415, 210, 55);   // mellette jobbra
+            continueBtn = new Rectangle(300, 510, 200, 50);
+            medKitBtn = new Rectangle(170, 415, 210, 55);
+            barricadeBtn = new Rectangle(420, 415, 210, 55);
         }
 
         public void GenerateOptions() {
@@ -66,11 +65,11 @@ namespace TheyAreComing {
             for (int i = 0; i < 3; i++)
                 buttons[i] = new Rectangle(startX + i * (bw + gap), startY, bw, bh);
 
-            selectedIndex  = -1;
+            selectedIndex = -1;
             medKitPurchased = false;
             barrPurchaseCount = 0;
             ContinueClicked = false;
-            pendingUpgrade  = null;
+            pendingUpgrade = null;
         }
 
         public Upgrade? Update(SoldierPlayer player) {
@@ -80,12 +79,12 @@ namespace TheyAreComing {
             for (int i = 0; i < 3; i++) {
                 hovered[i] = Raylib.CheckCollisionPointRec(mp, buttons[i]);
                 if (hovered[i] && Raylib.IsMouseButtonPressed(MouseButton.Left)) {
-                    selectedIndex  = i;
+                    selectedIndex = i;
                     pendingUpgrade = currentOptions[i];
                 }
             }
 
-            // Med kit gomb
+            // Med kit button
             bool medHover = Raylib.CheckCollisionPointRec(mp, medKitBtn);
             if (medHover && Raylib.IsMouseButtonPressed(MouseButton.Left)
                 && !medKitPurchased && player.Money >= 100) {
@@ -94,7 +93,7 @@ namespace TheyAreComing {
                 medKitPurchased = true;
             }
 
-            // Barrikád gomb ($100 / db, max 3x vásárolható körönként)
+            // Barricade button ($100 each, max 3x per round)
             bool barrHover = Raylib.CheckCollisionPointRec(mp, barricadeBtn);
             if (barrHover && Raylib.IsMouseButtonPressed(MouseButton.Left)
                 && barrPurchaseCount < 3 && player.Money >= 100) {
@@ -144,7 +143,6 @@ namespace TheyAreComing {
             }
         }
 
-        /// <summary>Elhasznál 1 barrikádot (lehelyezéskor hívjuk).</summary>
         public bool UseBarricade() {
             if (BarricadeCount <= 0) return false;
             BarricadeCount--;
@@ -152,10 +150,10 @@ namespace TheyAreComing {
         }
 
         public void Draw(SoldierPlayer player) {
-            // ── Háttér overlay ──────────────────────────────────────────────
+            // Background overlay
             Raylib.DrawRectangle(0, 0, 800, 600, new Color(0, 0, 0, 220));
 
-            // ── Fejléc sáv ──────────────────────────────────────────────────
+            // Header
             Raylib.DrawRectangle(0, 130, 800, 58, new Color(15, 15, 25, 240));
             Raylib.DrawRectangle(0, 130, 800, 2, new Color(180, 140, 0, 200));
             Raylib.DrawRectangle(0, 186, 800, 2, new Color(60, 60, 80, 180));
@@ -163,26 +161,24 @@ namespace TheyAreComing {
             string title = "UPGRADE  SCREEN";
             Raylib.DrawText(title, 400 - Raylib.MeasureText(title, 30) / 2, 142, 30, Color.Gold);
 
-            string sub = "Válassz egy fejlesztést, majd nyomj Continue-t";
+            string sub = "Choose an upgrade, then press Continue";
             Raylib.DrawText(sub, 400 - Raylib.MeasureText(sub, 12) / 2, 174, 12, new Color(140, 140, 160, 255));
 
-            // ── Upgrade kártyák ─────────────────────────────────────────────
+            // Upgrade cards
             for (int i = 0; i < 3; i++) {
                 var b = buttons[i];
                 bool sel = selectedIndex == i;
                 bool hov = hovered[i];
 
-                // Árnyék
                 Raylib.DrawRectangle((int)b.X + 4, (int)b.Y + 4, (int)b.Width, (int)b.Height, new Color(0, 0, 0, 100));
 
-                Color bg     = sel ? new Color(18, 55, 22, 255) :
+                Color bg = sel ? new Color(18, 55, 22, 255) :
                                hov ? new Color(30, 45, 35, 255) : new Color(22, 22, 36, 255);
                 Color border = sel ? new Color(80, 220, 90, 255) :
                                hov ? new Color(70, 130, 75, 255) : new Color(55, 55, 75, 255);
 
                 Raylib.DrawRectangleRec(b, bg);
 
-                // Felső accent csík
                 Color topStripe = sel ? new Color(80, 220, 90, 200) :
                                   hov ? new Color(60, 110, 65, 180) : new Color(70, 70, 100, 120);
                 Raylib.DrawRectangle((int)b.X, (int)b.Y, (int)b.Width, 4, topStripe);
@@ -190,21 +186,19 @@ namespace TheyAreComing {
 
                 var up = currentOptions[i];
 
-                // Ikon terület (felső 40px)
                 string emoji = up.Type switch {
-                    UpgradeType.Damage    => "DMG",
-                    UpgradeType.FireRate  => "SPD",
-                    UpgradeType.MaxHP     => " HP",
+                    UpgradeType.Damage => "DMG",
+                    UpgradeType.FireRate => "SPD",
+                    UpgradeType.MaxHP => " HP",
                     UpgradeType.MoveSpeed => "MOV",
-                    UpgradeType.MaxAmmo   => "AMO",
+                    UpgradeType.MaxAmmo => "AMO",
                     UpgradeType.Lifesteal => "LST",
                     _ => "???"
                 };
                 Color emojiCol = sel ? new Color(100, 240, 110, 255) :
                                  hov ? new Color(80, 180, 90, 255) : new Color(100, 100, 140, 255);
-                Raylib.DrawText(emoji, (int)b.X + (int)b.Width/2 - Raylib.MeasureText(emoji, 22)/2, (int)b.Y + 14, 22, emojiCol);
+                Raylib.DrawText(emoji, (int)b.X + (int)b.Width / 2 - Raylib.MeasureText(emoji, 22) / 2, (int)b.Y + 14, 22, emojiCol);
 
-                // Vízszintes elválasztó
                 Raylib.DrawRectangle((int)b.X + 12, (int)b.Y + 42, (int)b.Width - 24, 1, new Color(70, 70, 90, 200));
 
                 int nw = Raylib.MeasureText(up.Name, 15);
@@ -215,51 +209,49 @@ namespace TheyAreComing {
                 Raylib.DrawText(up.Description, (int)b.X + (int)b.Width / 2 - dw / 2, (int)b.Y + 74, 12,
                     new Color(170, 170, 185, 255));
 
-                // Státusz badge alul
                 if (sel) {
                     Raylib.DrawRectangle((int)b.X + 8, (int)b.Y + (int)b.Height - 22, (int)b.Width - 16, 16, new Color(30, 100, 35, 200));
                     string badge = "✓  SELECTED";
-                    Raylib.DrawText(badge, (int)b.X + (int)b.Width/2 - Raylib.MeasureText(badge, 11)/2,
+                    Raylib.DrawText(badge, (int)b.X + (int)b.Width / 2 - Raylib.MeasureText(badge, 11) / 2,
                         (int)b.Y + (int)b.Height - 20, 11, new Color(144, 238, 144, 255));
                 } else if (hov) {
                     Raylib.DrawRectangle((int)b.X + 8, (int)b.Y + (int)b.Height - 22, (int)b.Width - 16, 16, new Color(40, 55, 45, 180));
-                    string badge = "KLIKK A KIVÁLASZTÁSHOZ";
-                    Raylib.DrawText(badge, (int)b.X + (int)b.Width/2 - Raylib.MeasureText(badge, 10)/2,
+                    string badge = "CLICK TO SELECT";
+                    Raylib.DrawText(badge, (int)b.X + (int)b.Width / 2 - Raylib.MeasureText(badge, 10) / 2,
                         (int)b.Y + (int)b.Height - 20, 10, new Color(160, 200, 165, 255));
                 }
             }
 
             Vector2 mp2 = Raylib.GetMousePosition();
 
-            // ── Shop szekció cím ────────────────────────────────────────────
+            // Shop section
             Raylib.DrawRectangle(0, 398, 800, 18, new Color(10, 10, 18, 220));
-            string shopTitle = "━━  BOLT  ━━";
-            Raylib.DrawText(shopTitle, 400 - Raylib.MeasureText(shopTitle, 12)/2, 402, 12, new Color(120, 120, 150, 200));
+            string shopTitle = "━━  SHOP  ━━";
+            Raylib.DrawText(shopTitle, 400 - Raylib.MeasureText(shopTitle, 12) / 2, 402, 12, new Color(120, 120, 150, 200));
 
-            // ── Med Kit gomb ─────────────────────────────────────────────────
+            // Med Kit button
             DrawShopBtn(medKitBtn, mp2, medKitPurchased, player.Money >= 100,
-                medKitPurchased ? "✓  ELSŐSEGÉLY ELHASZNÁLVA" : "ELSŐSEGÉLY CSOMAG",
-                medKitPurchased ? "Teljes HP visszatöltve" : $"HP visszatölt  —  $100",
+                medKitPurchased ? "✓  FIRST AID USED" : "FIRST AID KIT",
+                medKitPurchased ? "Full HP restored" : $"Restore full HP  —  $100",
                 null,
                 new Color(55, 15, 15, 255), new Color(80, 22, 22, 255),
                 new Color(150, 45, 45, 255), new Color(220, 70, 70, 255));
 
-            // ── Barrikád gomb ─────────────────────────────────────────────────
+            // Barricade button
             bool barrMaxed = barrPurchaseCount >= 3;
-            bool canBarr   = player.Money >= 100 && !barrMaxed;
-            string barrTitle = barrMaxed ? "✓  MAX BARRIKÁD" : $"BARRIKÁD  —  $100";
-            string barrLine2 = $"Meglévő: {BarricadeCount} db   Vásárolható még: {3 - barrPurchaseCount}x";
+            bool canBarr = player.Money >= 100 && !barrMaxed;
+            string barrTitle = barrMaxed ? "✓  MAX BARRICADES" : $"BARRICADE  —  $100";
+            string barrLine2 = $"Owned: {BarricadeCount}   Can buy: {3 - barrPurchaseCount}x more";
             DrawShopBtn(barricadeBtn, mp2, barrMaxed, canBarr,
                 barrTitle, barrLine2, null,
                 new Color(28, 38, 14, 255), new Color(45, 60, 20, 255),
                 new Color(90, 120, 40, 255), new Color(140, 185, 55, 255));
 
-            // ── Continue gomb ───────────────────────────────────────────────
+            // Continue button
             bool showContinue = selectedIndex >= 0;
-            bool contHover2   = Raylib.CheckCollisionPointRec(mp2, continueBtn);
+            bool contHover2 = Raylib.CheckCollisionPointRec(mp2, continueBtn);
 
             if (showContinue) {
-                // Árnyék
                 Raylib.DrawRectangle((int)continueBtn.X + 3, (int)continueBtn.Y + 3,
                     (int)continueBtn.Width, (int)continueBtn.Height, new Color(0, 0, 0, 120));
                 Raylib.DrawRectangleRec(continueBtn,
@@ -274,16 +266,17 @@ namespace TheyAreComing {
             } else {
                 Raylib.DrawRectangleRec(continueBtn, new Color(20, 20, 32, 255));
                 Raylib.DrawRectangleLinesEx(continueBtn, 1, new Color(50, 50, 65, 255));
-                string ct = "— válassz fejlesztést —";
+                string ct = "— select an upgrade —";
                 Raylib.DrawText(ct,
                     (int)continueBtn.X + (int)continueBtn.Width / 2 - Raylib.MeasureText(ct, 12) / 2,
                     (int)continueBtn.Y + 19, 12, new Color(75, 75, 92, 255));
             }
 
-            // ── Pénz kijelzés ───────────────────────────────────────────────
+            // Money display
             Raylib.DrawRectangle(0, 574, 800, 26, new Color(0, 0, 0, 180));
-            string moneyStr = $"$  {player.Money}";
-            Raylib.DrawText(moneyStr, 400 - Raylib.MeasureText(moneyStr, 18) / 2, 579, 18, Color.Gold);
+            string moneyStr = player.IsPlayground ? "∞" : $"$  {player.Money}";
+            Color moneyCol = player.IsPlayground ? Color.SkyBlue : Color.Gold;
+            Raylib.DrawText(moneyStr, 400 - Raylib.MeasureText(moneyStr, 18) / 2, 579, 18, moneyCol);
         }
 
         private void DrawShopBtn(Rectangle b, Vector2 mp, bool purchased, bool canAfford,
@@ -291,38 +284,34 @@ namespace TheyAreComing {
                                   Color bgNorm, Color bgHover, Color borderNorm, Color borderHover) {
             bool hover = Raylib.CheckCollisionPointRec(mp, b);
 
-            Color bg = purchased  ? new Color(15, 45, 18, 255) :
+            Color bg = purchased ? new Color(15, 45, 18, 255) :
                        !canAfford ? new Color(30, 18, 18, 255) :
-                       hover      ? bgHover : bgNorm;
-            Color border = purchased  ? new Color(55, 150, 60, 255) :
+                       hover ? bgHover : bgNorm;
+            Color border = purchased ? new Color(55, 150, 60, 255) :
                            !canAfford ? new Color(80, 45, 45, 255) :
-                           hover      ? borderHover : borderNorm;
+                           hover ? borderHover : borderNorm;
 
-            // Árnyék
-            Raylib.DrawRectangle((int)b.X + 3, (int)b.Y + 3, (int)b.Width, (int)b.Height, new Color(0,0,0,80));
+            Raylib.DrawRectangle((int)b.X + 3, (int)b.Y + 3, (int)b.Width, (int)b.Height, new Color(0, 0, 0, 80));
             Raylib.DrawRectangleRec(b, bg);
 
-            // Felső accent vonal
-            Color stripe = purchased  ? new Color(55, 150, 60, 180) :
+            Color stripe = purchased ? new Color(55, 150, 60, 180) :
                            !canAfford ? new Color(80, 45, 45, 100) :
-                           hover      ? borderHover : new Color(borderNorm.R, borderNorm.G, borderNorm.B, (byte)120);
+                           hover ? borderHover : new Color(borderNorm.R, borderNorm.G, borderNorm.B, (byte)120);
             Raylib.DrawRectangle((int)b.X, (int)b.Y, (int)b.Width, 3, stripe);
             Raylib.DrawRectangleLinesEx(b, 1, border);
 
             Color titleCol = purchased ? new Color(130, 220, 135, 255) :
-                             canAfford  ? Color.White :
+                             canAfford ? Color.White :
                                          new Color(130, 85, 85, 255);
             Color line2Col = purchased ? new Color(100, 170, 105, 255) :
-                             canAfford  ? new Color(175, 175, 190, 255) :
+                             canAfford ? new Color(175, 175, 190, 255) :
                                          new Color(110, 75, 75, 255);
 
-            // Cím középre igazítva
             Raylib.DrawText(titleText,
                 (int)b.X + (int)b.Width / 2 - Raylib.MeasureText(titleText, 14) / 2,
                 (int)b.Y + 9, 14, titleCol);
 
-            // Elválasztó
-            Raylib.DrawRectangle((int)b.X + 10, (int)b.Y + 28, (int)b.Width - 20, 1, new Color(60,60,80,160));
+            Raylib.DrawRectangle((int)b.X + 10, (int)b.Y + 28, (int)b.Width - 20, 1, new Color(60, 60, 80, 160));
 
             Raylib.DrawText(line2,
                 (int)b.X + (int)b.Width / 2 - Raylib.MeasureText(line2, 11) / 2,
@@ -334,10 +323,8 @@ namespace TheyAreComing {
                     (int)b.Y + 48, 10, new Color(160, 185, 110, 255));
             }
 
-            // Hover pulse indicator
-            if (hover && canAfford && !purchased) {
+            if (hover && canAfford && !purchased)
                 Raylib.DrawRectangle((int)b.X + (int)b.Width - 8, (int)b.Y + 4, 4, 4, borderHover);
-            }
         }
     }
 }
